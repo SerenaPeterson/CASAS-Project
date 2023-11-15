@@ -78,7 +78,6 @@ def compare_time_by_granger_causality(df1: pd.DataFrame, df2: pd.DataFrame) -> f
 
 
 if __name__ == "__main__":
-    # dataset1 and dataset2 are numpy arrays with shape (n_samples, n_features)
     columns = ["A", "B", "C", "D", "E", "F"]
     df1 = pd.DataFrame(np.random.rand(50000, 6), columns=columns)
     df2 = pd.DataFrame(np.random.rand(50000, 6), columns=columns)
