@@ -1,16 +1,17 @@
 import numpy as np
 import pandas as pd
 
-
 # import sklearn.metrics as skm
 
-# Use these four
+#Dynamic Time Warping #all you here
+
+# Also use these four
 # kld (Kullback-Leibler Divergence). Created in this file.
-# skm.mutual_info_score(data1, data2) #Entropy-based. Using instead of making a function of autoencoder size to score.
+# skm.mutual_info_score(data1, data2) #Entropy-based. Using instead of making a function of autoencoder size to score for simplicity.
 # scipy.stats.wasserstein_distance # Earth Mover's Distance, used in WGANs
 # compare_time_by_granger_causality (Granger Causality). Created in this file.
 
-# And select one from here or make your own
+# And select one from here or any other --- even a custom one
 # skm.pairwise.cosine_similarity
 # L2 norm: np.linalg.norm(x,ord=2) # Euclidean
 # L1 norm: np.linalg.norm(x,ord=1) # Manhattan
