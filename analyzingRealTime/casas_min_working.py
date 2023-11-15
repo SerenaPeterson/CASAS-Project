@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing as skpp
 
+from common import DEBUG
+
 
 RESULTS_DIR = Path("results/CASAS")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -95,6 +97,9 @@ def get_time_data():
     for i, file in enumerate(data_dir.glob("*")):
         df = pd.read_csv(file, header=None, delimiter=' ')
         df.columns = columns
+
+        if DEBUG:
+            df = df.iloc[:50000]
 
         ##datetime
         df[datetimenm] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
