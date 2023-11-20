@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from statsmodels.tsa.stattools import grangercausalitytests
+from typing import Callable
 
 # import sklearn.metrics as skm
 
@@ -38,41 +40,48 @@ def kld(p: pd.DataFrame, q: pd.DataFrame, bins=35) -> float:
     return entropy(p_hist, q_hist, base=2)
 
 
-def create_internal_granger_matrix(ts: np.ndarray | pd.DataFrame, maxlag=3) -> np.ndarray | pd.DataFrame:
-    from statsmodels.tsa.stattools import grangercausalitytests
-    """
-    Create a Granger causality matrix for all feature pairs within a single time series dataset.
-    Each cell (i, j) in the matrix represents the Granger causality test result for feature i causing feature j.
-    Reference: https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.grangercausalitytests.html
-    """
-    if isinstance(ts, pd.DataFrame):
-        columns = ts.columns
-        ts = ts.to_numpy()
+def matrix_from_1d_measure(
+        multivariate_time_series: np.ndarray | pd.DataFrame,
+        measure_func:Callable[[np.ndarray,np.ndarray,...],float],
+        skip_same=False,
+        **measure_func_kwargs
+) -> np.ndarray | pd.DataFrame:
+    if isinstance(multivariate_time_series, pd.DataFrame):
+        columns = multivariate_time_series.columns
+        multivariate_time_series = multivariate_time_series.to_numpy()
     else:
         columns = None
 
-    num_features = ts.shape[1]
-    causality_matrix = np.zeros((num_features, num_features), dtype=np.float32)
+    num_features = multivariate_time_series.shape[1]
+    measure_matrix = np.zeros((num_features, num_features), dtype=np.float32)
 
     for i in range(num_features):
         for j in range(num_features):
-            if i != j:
-                combined_data = np.column_stack((ts[:, i], ts[:, j]))
-                result = grangercausalitytests(combined_data, maxlag=maxlag, verbose=False)
-                # We are interested in any causality, so we take the minimum p-value over all lags up to maxlag
-                # Options of 'ssr_chi2test' and 'params_ftest' are available. I'm not sure which is better.
-                p_values = [result[lag][0]['ssr_chi2test'][1] for lag in range(1, maxlag + 1)]
-                causality_matrix[i, j] = np.min(p_values)  # Choose the minimum p-value
+            if skip_same and i==j:
+                continue
+            measure_matrix[i, j] = measure_func(
+                multivariate_time_series[:, i],
+                multivariate_time_series[:, j],
+                **measure_func_kwargs
+            )
     if columns is not None:
-        return pd.DataFrame(causality_matrix, columns=columns, index=columns)
+        return pd.DataFrame(measure_matrix, columns=columns, index=columns)
     else:
-        return causality_matrix
+        return measure_matrix
+
+def granger_causality_result(feature1:np.ndarray, feature2:np.ndarray, maxlag=3) -> float:
+    combined_data = np.column_stack((feature1, feature2))
+    result = grangercausalitytests(combined_data, maxlag=maxlag, verbose=False)
+    # We are interested in any causality, so we take the minimum p-value over all lags up to maxlag
+    # Options of 'ssr_chi2test' and 'params_ftest' are available. I'm not sure which is better.
+    p_values = [result[lag][0]['ssr_chi2test'][1] for lag in range(1, maxlag + 1)]
+    return np.min(p_values)  # Choose the minimum p-value
 
 
 def compare_time_by_granger_causality(df1: pd.DataFrame, df2: pd.DataFrame) -> float:
     # you may go crazy here (do whatever)
-    matrix1 = create_internal_granger_matrix(df1)
-    matrix2 = create_internal_granger_matrix(df2)
+    matrix1 = matrix_from_1d_measure(df1, granger_causality_result, skip_same=True, maxlag=3)
+    matrix2 = matrix_from_1d_measure(df2, granger_causality_result, skip_same=True, maxlag=3)
     # I chose KLD for fun. There's likely a better summary metric.
     return kld(matrix1, matrix2)
 
@@ -82,5 +91,5 @@ if __name__ == "__main__":
     df1 = pd.DataFrame(np.random.rand(50000, 6), columns=columns)
     df2 = pd.DataFrame(np.random.rand(50000, 6), columns=columns)
     # create_internal_granger_matrix(df1)
-    compare_time_by_granger_causality(df1, df2)
+    a=compare_time_by_granger_causality(df1, df2)
     pass
