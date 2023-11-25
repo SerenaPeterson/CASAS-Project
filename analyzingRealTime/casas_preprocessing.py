@@ -7,7 +7,8 @@ from sklearn import preprocessing as skpp
 
 from common import *
 
-
+NSAMPLES_PER_HOME = 1000 if DEBUG else "all"
+NHOMES = 3 if DEBUG else "all"
 
 def gender_to_int(series:pd.Series):
     return series.map({"male": 1, "female": 0})
@@ -47,9 +48,6 @@ def get_time_data():
     for i, file in enumerate(data_dir.glob("*")):
         df = pd.read_csv(file, header=None, delimiter=' ')
         df.columns = columns
-
-        if DEBUG:
-            df = df.iloc[:50000]
 
         ##datetime
         df[datetimenm] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='ISO8601')
@@ -118,6 +116,13 @@ def get_data( scaler=None):
     static_df = get_static_df()
     time_df = get_time_data()
     df = pd.merge(static_df, time_df)
+
+    if NHOMES != "all":
+        unique_ids = df[idnm].unique()
+        df = df[df[idnm].isin(unique_ids[:NHOMES])]
+    if NSAMPLES_PER_HOME != "all":
+        df = df.groupby(idnm).head(NSAMPLES_PER_HOME)
+
     if scaler is None:
         scaler = skpp.MinMaxScaler()
     df[all_feats] = scaler.fit_transform(df[all_feats])
