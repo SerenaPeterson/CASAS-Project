@@ -1,7 +1,9 @@
 import sys
 from pathlib import Path
+import torch
 
 DEBUG = sys.gettrace() is not None
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 RESULTS_DIR = Path("results/CASAS")
