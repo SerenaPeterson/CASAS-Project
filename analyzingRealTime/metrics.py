@@ -3,6 +3,7 @@ import scipy
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.stattools import grangercausalitytests
+from dtaidistance import dtw
 from sklearn import metrics
 from typing import Callable
 import warnings
@@ -132,8 +133,36 @@ def create_internal_granger_matrix(ts: np.ndarray | pd.DataFrame, maxlag=3) -> n
     else:
         return causality_matrix
 #####################################################################################################################
+#Dynamic Time Warping - Direct Comparison Across Homes
 
-#Dynamic Time Warping
+DTW_matrix = np.zeros((n, n), dtype=np.float32)
+temp = np.zeros((num_features, num_features), dtype=np.float32)
+for i, person1 in enumerate(ts_list.keys()):
+    for j, person2 in enumerate(ts_list.keys()):
+        if i != j:
+            ts1 = ts_list[person1].to_numpy()
+            ts2 = ts_list[person2].to_numpy()
+            temp = dtw.distance_matrix_fast([ts1[:,i].reshape(1,-1) for i in range(num_features)] +
+                                            [ts2[:,j].reshape(1,-1) for j in range(num_features)])
+            temp = temp[num_features:,0:num_features]
+            DTW_matrix[i, j] = np.linalg.norm(temp)  #Frobenius norm
+
+measures_list["DTW - Between"] = DTW_matrix
+
+# Dynamic Time Warping - Comparison Within Homes
+DTW_internal_matrices = {}
+DTW_matrix = np.zeros((n, n), dtype=np.float32)
+
+for i, person in enumerate(ts_list.keys()):
+    ts = ts_list[person].to_numpy()
+    temp = dtw.distance_matrix_fast([ts[:, i].reshape(1, -1) for i in range(num_features)])
+    DTW_internal_matrices[person] = pd.DataFrame(temp)
+
+for i, person1 in enumerate(ts_list.keys()):
+    for j, person2 in enumerate(ts_list.keys()):
+        DTW_matrix[i, j] = kld(DTW_internal_matrices[person1], DTW_internal_matrices[person2])
+
+measures_list["DTW - Within"] = DTW_matrix
 
 #####################################################################################################################
 # Kullback-Leibler Divergence
@@ -168,8 +197,8 @@ for i, person1 in enumerate(ts_list.keys()):
         for s, feature1 in enumerate(df1.columns):
             for t, feature2 in enumerate(df2.columns):
                 temp[s,t] = scipy.stats.wasserstein_distance(df1[feature1],df2[feature2])
-                EM_matrix[i,j] = np.linalg.norm(temp) # Frobenius norm
-                print(i)
+                EM_matrix[i,j] = np.linalg.norm(temp) #Frobenius norm
+
 measures_list["Earth Mover's Distance"] = EM_matrix
 ###################################################################################################################
 # Granger Causality
