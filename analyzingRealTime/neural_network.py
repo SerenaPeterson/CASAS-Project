@@ -92,6 +92,7 @@ class MLP(NnBase):
 
 if __name__ == "__main__":
     #test nn
+    import torchmetrics
     import nn_data
     import casas_preprocessing as cp
     df, scaler = cp.get_data()
@@ -118,4 +119,8 @@ if __name__ == "__main__":
     #note that the test data should be different than the training data. This is just for testing.
     loss = mlp.eval_loss(dataloader, nn.CrossEntropyLoss(), nbatches=100)
     print(f"Avg loss: {loss}")
+    mae = mlp.eval_loss(dataloader, nn.L1Loss(), nbatches=100)
+    print(f"MAE: {mae}")
+    mse = mlp.eval_loss(dataloader, nn.MSELoss(), nbatches=100)
+    print(f"RMSE: {torch.sqrt(mse)}")
     pass

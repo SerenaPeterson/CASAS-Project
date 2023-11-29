@@ -35,7 +35,7 @@ class StaticTimeSeriesDataset(Dataset):
 
     def __getitem__(self, idx):
         stop = idx + self.sequence_length
-        return self.static, self.time_series[idx:stop], self.labels[idx:stop].mean(dim=0)
+        return self.static, self.time_series[idx:stop], self.labels[stop-1] #use final label as label for sequence
 
 
 
