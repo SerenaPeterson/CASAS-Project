@@ -103,7 +103,7 @@ class LinearRegression(NnBase):
 
 if __name__ == "__main__":
     #test nn
-    import torchmetrics
+    # import torchmetrics
     import nn_data
     import casas_preprocessing as cp
     df, scaler = cp.get_data()
