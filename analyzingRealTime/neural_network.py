@@ -89,6 +89,17 @@ class MLP(NnBase):
             x = x + torch.randn_like(x) * self.noise_std
         return self.model(x)
 
+class LinearRegression(NnBase):
+    def __init__(self, nfeatures, device=DEVICE):
+        super().__init__()
+        self.model = nn.Linear(nfeatures, 1)
+        self.to(device)
+
+    def forward(self, x:torch.Tensor):
+        return self.model(x)
+
+    def get_weights(self):
+        return self.model.weight.detach().cpu().numpy().flatten()
 
 if __name__ == "__main__":
     #test nn
