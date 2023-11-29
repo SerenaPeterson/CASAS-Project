@@ -1,6 +1,3 @@
-import string
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing as skpp
@@ -112,7 +109,7 @@ def get_time_data():
     df.reset_index(inplace=True, drop=True)
     return df
 
-def get_data( scaler=None):
+def get_data(scaler=None):
     static_df = get_static_df()
     time_df = get_time_data()
     df = pd.merge(static_df, time_df)
