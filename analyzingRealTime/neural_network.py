@@ -82,8 +82,9 @@ class MLP(NnBase):
         self.to(device)
 
     def forward(self, x:tuple[torch.Tensor, torch.Tensor]):
+        #static not used--just for compatibility with other models
         static, time_series = x
-        batch_size = static.shape[0]
+        batch_size = time_series.shape[0]
         x = time_series.reshape(batch_size, -1)
         if self.training:
             x = x + torch.randn_like(x) * self.noise_std
