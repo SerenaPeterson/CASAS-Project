@@ -31,7 +31,7 @@ class NnBase(nn.Module):
                 self.optimizer.step()
             avg_loss = loss_sum / step_num
             self.scheduler.step(avg_loss)
-            print(f"Epoch {epoch_num} loss: {avg_loss}")
+            print(f"Epoch {epoch_num} loss: {avg_loss.item():.8f}")
 
 
     def predict(self, x):
@@ -129,9 +129,9 @@ if __name__ == "__main__":
     print(labels[0].argmax())
     #note that the test data should be different than the training data. This is just for testing.
     loss = mlp.eval_loss(dataloader, nn.CrossEntropyLoss(), nbatches=100)
-    print(f"Avg loss: {loss}")
+    print(f"Avg loss: {loss:.8f}")
     mae = mlp.eval_loss(dataloader, nn.L1Loss(), nbatches=100)
-    print(f"MAE: {mae}")
+    print(f"MAE: {mae:.8f}")
     mse = mlp.eval_loss(dataloader, nn.MSELoss(), nbatches=100)
-    print(f"RMSE: {torch.sqrt(mse)}")
+    print(f"RMSE: {torch.sqrt(mse):.8f}")
     pass
