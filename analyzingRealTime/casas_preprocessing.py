@@ -129,4 +129,5 @@ def get_data(scaler=None):
 
 if __name__ == "__main__":
     df, scaler = get_data()
+    df.to_csv("FullData")
     pass
