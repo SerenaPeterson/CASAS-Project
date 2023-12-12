@@ -1,22 +1,27 @@
 import sys
 import scipy
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.stattools import grangercausalitytests
 from dtaidistance import dtw
-from sklearn import metrics
+from sklearn import metrics, feature_selection
+import casas_preprocessing as cp
 from typing import Callable
 import warnings
 warnings.filterwarnings("ignore")
 
 ###################################################################################################################
 
+startTime = datetime.now()
+
 # Load data
-data = pd.read_csv("al/preprocessed_old/times_for_static_data.csv")
+data = pd.read_csv("al/times_for_static_data.csv")
+#data = pd.read_csv("al/FullData")
 
 DEBUG = sys.gettrace() is not None
 NSAMPLES_PER_HOME = 1000 if DEBUG else "all"
-NHOMES = 3 #if DEBUG else "all"
+NHOMES = "all" #if DEBUG else "all"
 
 if NHOMES != "all":
     unique_ids = data["Person"].unique()
@@ -25,8 +30,15 @@ if NSAMPLES_PER_HOME != "all":
     data = data.groupby("Person").head(NSAMPLES_PER_HOME)
 
 # Drop unneeded columns
+#Approach 1
 data = data[["DateTime", "Person", "SecondsCos", "SecondsSin", "DoyCos", "DoySin", "Sedentary"]]
 data = data.set_index("DateTime")
+
+# #Approach 2
+# data = data.iloc[:, :data.columns.str.find("Work").argmax()+1]
+# data = data.drop(["Unnamed: 0","Place1", "Place2", "Activity"], axis =1)
+# data = data.set_index("DateTime")
+
 ts_list = {}
 
 # Create TS for each person
@@ -34,6 +46,7 @@ for person in data.Person.unique():
     ts_list[person] = data[data["Person"] == person].drop(["Person"], axis=1)
 
 # Collected Measures
+startTime = datetime.now()
 n = len(ts_list)
 num_features = len(ts_list[1].columns)
 measures_list = {}
@@ -133,6 +146,26 @@ def create_internal_granger_matrix(ts: np.ndarray | pd.DataFrame, maxlag=3) -> n
     else:
         return causality_matrix
 #####################################################################################################################
+#Euclidean Distance
+
+eucl_internal_matrices = {}
+for _, person in enumerate(ts_list.keys()):
+    ts = ts_list[person].to_numpy()
+    temp = np.zeros((num_features, num_features), dtype=np.float32)
+    for i in range(num_features):
+        for j in range(num_features):
+            temp[i, j] = np.linalg.norm(ts[:, i] - ts[:, j])
+    eucl_internal_matrices[person] = pd.DataFrame(temp, columns=ts_list[person].columns, index=ts_list[person].columns)
+
+euclidean_matrix = np.zeros((n, n), dtype=np.float32)
+for i, person1 in enumerate(ts_list.keys()):
+    for j, person2 in enumerate(ts_list.keys()):
+        euclidean_matrix[i, j] = kld(eucl_internal_matrices[person1], eucl_internal_matrices[person2])
+
+measures_list["Euclidean Distance"] = euclidean_matrix
+
+##################################################################################################################
+
 #Dynamic Time Warping - Direct Comparison Across Homes
 
 DTW_matrix = np.zeros((n, n), dtype=np.float32)
@@ -149,6 +182,7 @@ for i, person1 in enumerate(ts_list.keys()):
 
 measures_list["DTW - Between"] = DTW_matrix
 
+##################################################################################################################
 # Dynamic Time Warping - Comparison Within Homes
 DTW_internal_matrices = {}
 DTW_matrix = np.zeros((n, n), dtype=np.float32)
@@ -174,7 +208,7 @@ for i, person1 in enumerate(ts_list.keys()):
 
 measures_list["KLD"] = kld_matrix
 #####################################################################################################################
-# Mutual Information Score
+# Mutual Information Score - Categorical
 MIS_internal_matrices = {}
 MIS_matrix = np.zeros((n, n), dtype=np.float32)
 for i, person in enumerate(ts_list.keys()):
@@ -186,6 +220,22 @@ for i, person1 in enumerate(ts_list.keys()):
 
 measures_list["Mutual Information Score"] = MIS_matrix
 #####################################################################################################################
+# # Mutual Information Regression
+
+# MIR_internal_matrices = {}
+# MIR_matrix = np.zeros((n, n), dtype=np.float32)
+# for _, person in enumerate(ts_list.keys()):
+#     temp = np.zeros((num_features, num_features), dtype=np.float32)
+#     for j in range(num_features):
+#         temp[:, j] =  feature_selection.mutual_info_regression(ts_list[person],ts_list[person].iloc[:,j])
+#     MIR_internal_matrices[person] = pd.DataFrame(temp, columns=ts_list[person].columns, index=ts_list[person].columns)
+
+# for i, person1 in enumerate(ts_list.keys()):
+#     for j, person2 in enumerate(ts_list.keys()):
+#         MIR_matrix[i, j] = kld(MIR_internal_matrices[person1],MIR_internal_matrices[person2])
+#
+# measures_list["Mutual Information Regression"] = MIR_matrix
+# #####################################################################################################################
 # Earth Mover's Distance
 
 EM_matrix = np.zeros((n, n), dtype=np.float32)
@@ -214,6 +264,7 @@ for i, person1 in enumerate(ts_list.keys()):
         GC_matrix[i, j] = kld(gc_internal_matrices[person1],gc_internal_matrices[person2])
 
 measures_list["Granger Causality"] = GC_matrix
+
 ##################################################################################################################
 # Cosine Similarity
 
@@ -229,19 +280,18 @@ for i, person1 in enumerate(ts_list.keys()):
 
 measures_list["Cosine Similarity"] = cos_matrix
 ##################################################################################################################
-# L2 norm: np.linalg.norm(x,ord=2) # Euclidean
-# L1 norm: np.linalg.norm(x,ord=1) # Manhattan
-
-##################################################################################################################
 # Summarize results for pairs of homes
 first_index = np.tile(range(n), n)
 second_index = np.repeat(range(n), n)
 
 for i, measure in enumerate(measures_list):
     if i == 0:
-        flatten_matrix = measures_list[measure].flatten("F")
+        flatten_matrix = measures_list[measure].flatten()
         summary = pd.DataFrame(flatten_matrix, index=[first_index, second_index])
     else:
-        summary[measure] = measures_list[measure].flatten("F")
+        summary[measure] = measures_list[measure].flatten()
 
 summary.columns = measures_list.keys()
+print(datetime.now() - startTime)
+summary.to_csv("SimilarityData")
+print(datetime.now() - startTime)
