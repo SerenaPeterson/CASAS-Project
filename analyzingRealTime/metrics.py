@@ -208,7 +208,7 @@ for i, person1 in enumerate(ts_list.keys()):
 
 measures_list["KLD"] = kld_matrix
 #####################################################################################################################
-# Mutual Information Score - Categorical
+# Mutual Information Score
 MIS_internal_matrices = {}
 MIS_matrix = np.zeros((n, n), dtype=np.float32)
 for i, person in enumerate(ts_list.keys()):
